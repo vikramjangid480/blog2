@@ -76,7 +76,7 @@ function generateSlug($string) {
     return strtolower(trim(preg_replace('/[^A-Za-z0-9-]+/', '-', $string)));
 }  
 
-// Helper function to upload file
+// Helper function to upload file - ALWAYS returns relative path only
 function uploadFile($file, $subfolder = '') {
     $upload_dir = '../uploads/';
     
@@ -115,7 +115,9 @@ function uploadFile($file, $subfolder = '') {
     
     // Move uploaded file
     if (move_uploaded_file($file['tmp_name'], $file_path)) {
-        return '/uploads/' . ($subfolder ? $subfolder . '/' : '') . $filename;
+        // IMPORTANT: Return relative path ONLY (no domain) for database storage
+        // Format: uploads/subfolder/filename.ext (without leading slash)
+        return 'uploads/' . ($subfolder ? $subfolder . '/' : '') . $filename;
     }
     
     error_log('Failed to move uploaded file to: ' . $file_path);
@@ -128,27 +130,54 @@ function getFullImageUrl($imagePath) {
         return null;
     }
     
-    // If it's already a full URL, return as-is
-    if (strpos($imagePath, 'http') === 0) {
+    // If it's already a full URL, return as-is (backward compatibility)
+    if (strpos($imagePath, 'http://') === 0 || strpos($imagePath, 'https://') === 0) {
         return $imagePath;
     }
     
     // Determine the appropriate base URL
-$baseUrl = ($_SERVER['HTTP_HOST'] === 'localhost:8000')
-    ? 'http://localhost:8000'
-    : 'https://boganto.com';
-
+    $baseUrl = ($_SERVER['HTTP_HOST'] === 'localhost:8000')
+        ? 'http://localhost:8000'
+        : 'https://boganto.com';
     
-    // If it's a relative path to uploads, convert to full URL
-    if (strpos($imagePath, '/uploads/') === 0) {
-        return $baseUrl . $imagePath;
+    // Remove leading slash if present (normalize to relative path)
+    $imagePath = ltrim($imagePath, '/');
+    
+    // Handle relative paths (uploads/... or uploads/subfolder/...)
+    if (strpos($imagePath, 'uploads/') === 0) {
+        return $baseUrl . '/' . $imagePath;
     }
     
-    // If it's just a filename, assume it's in uploads
+    // If it's just a filename without path, assume it's in uploads root
     if (strpos($imagePath, '/') === false) {
         return $baseUrl . '/uploads/' . $imagePath;
     }
     
-    return $imagePath;
+    // Default: prepend baseUrl
+    return $baseUrl . '/' . $imagePath;
+}
+
+// Helper function to clean image path - removes domain prefix if present
+// Always returns relative path: uploads/subfolder/filename.ext
+function cleanImagePath($imagePath) {
+    if (!$imagePath || empty($imagePath)) {
+        return null;
+    }
+    
+    // Remove any domain prefix (http://..., https://...)
+    $imagePath = preg_replace('/^https?:\/\/[^\/]+\//', '', $imagePath);
+    
+    // Remove leading slash if present
+    $imagePath = ltrim($imagePath, '/');
+    
+    // Ensure it starts with 'uploads/'
+    if (strpos($imagePath, 'uploads/') !== 0) {
+        // If it doesn't start with uploads/, but it's in uploads somewhere, fix it
+        if (strpos($imagePath, 'uploads/') !== false) {
+            $imagePath = substr($imagePath, strpos($imagePath, 'uploads/'));
+        }
+    }
+    
+    return $imagePath ?: null;
 }
 ?>

@@ -329,8 +329,9 @@ function uploadBannerFile($file, $subfolder = '') {
     
     // Move uploaded file
     if (move_uploaded_file($file['tmp_name'], $file_path)) {
-        // Return relative path from webroot
-        return '/uploads/' . ($subfolder ? $subfolder . '/' : '') . $filename;
+        // IMPORTANT: Return relative path ONLY (no domain) for database storage
+        // Format: uploads/subfolder/filename.ext (without leading slash)
+        return 'uploads/' . ($subfolder ? $subfolder . '/' : '') . $filename;
     }
     
     return false;

@@ -528,24 +528,14 @@ function addRelatedBooks($db, $blog_id, $books) {
                 
                 // Priority 2: Use existing cover_image_url if no new file uploaded
                 if (!$cover_image && isset($book['cover_image_url']) && !empty($book['cover_image_url'])) {
-                    $cover_image = $book['cover_image_url'];
-                    // Filter out external URLs (only allow uploaded images or null)
-                    if (strpos($cover_image, 'http') === 0 && strpos($cover_image, '/uploads/') === false) {
-                        $cover_image = null;
-                    } else {
-                        error_log("Book $index: Preserving existing cover image - $cover_image");
-                    }
+                    $cover_image = cleanImagePath($book['cover_image_url']);
+                    error_log("Book $index: Preserving existing cover image - $cover_image");
                 }
                 
                 // Priority 3: Use provided cover_image if available
                 if (!$cover_image && isset($book['cover_image']) && !empty($book['cover_image'])) {
-                    $cover_image = $book['cover_image'];
-                    // Filter out external URLs (only allow uploaded images or null)
-                    if (strpos($cover_image, 'http') === 0 && strpos($cover_image, '/uploads/') === false) {
-                        $cover_image = null;
-                    } else {
-                        error_log("Book $index: Using provided cover image - $cover_image");
-                    }
+                    $cover_image = cleanImagePath($book['cover_image']);
+                    error_log("Book $index: Using provided cover image - $cover_image");
                 }
                 
                 // Prepare variables for binding
@@ -614,8 +604,9 @@ function uploadFileToSubfolder($file, $subfolder = '') {
     
     // Move uploaded file
     if (move_uploaded_file($file['tmp_name'], $file_path)) {
-        // Return relative path from webroot
-        return '/uploads/' . ($subfolder ? $subfolder . '/' : '') . $filename;
+        // IMPORTANT: Return relative path ONLY (no domain) for database storage
+        // Format: uploads/subfolder/filename.ext (without leading slash)
+        return 'uploads/' . ($subfolder ? $subfolder . '/' : '') . $filename;
     }
     
     return false;
