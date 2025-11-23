@@ -31,13 +31,13 @@ function getBannerImages($db) {
         $stmt->execute();
         $banners = $stmt->fetchAll();
         
-        // Format banner data with enhanced blog linking
+        // Format banner data with enhanced blog linking and full image URLs
         $formatted_banners = array_map(function($banner) {
             return [
                 'id' => (int)$banner['id'],
                 'title' => $banner['title'],
                 'subtitle' => $banner['subtitle'],
-                'image_url' => $banner['image_url'],
+                'image_url' => getFullImageUrl($banner['image_url']),
                 'link_url' => $banner['link_url'],
                 'blog_id' => $banner['blog_id'] ? (int)$banner['blog_id'] : null,
                 'blog_slug' => $banner['blog_slug'],
